@@ -1,0 +1,76 @@
+pipeline{
+    agent {
+        docker {
+            image 'abhishekf5/maven-abhishek-docker-agent:v1'
+            args '--user root -v /var/run/docker.sock:/var/run/docker.sock' 
+        }
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                sh 'echo Checking out code. This is the applications code'
+                git branch: 'main', url: 'https://github.com/iam-veeramalla/Jenkins-Zero-To-Hero.git'
+            }
+        }
+
+        stage('Build and Test Maybe') {
+            steps {
+                sh 'ls -ltr'
+                sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && mvn clean package'
+            }
+        }
+
+        stage('Static Code Analysis') {
+            environment {
+                SONAR_URL = "TODO"
+            }
+            steps {
+                sh '${SONAR_URL} I will eventually add Sonarqube to this'
+            }
+        }
+
+        stage('Build and Push!!') {
+            environment {
+                DOCKER_IMAGE = "patilku/cicd-java-jenkins-argo:${BUILD_NUMBER}"
+                REGISTRY_CREDENTIALS = credentials('docker-cred')
+            }
+            steps {
+                script {
+                    sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && docker build -t ${DOCKER_IMAGE} .'
+                    def dockerImage = docker.image("${DOCKER_IMAGE}")
+                    docker.withRegistry('https://index.docker.io/v1/', "docker-cred") {
+                        dockerImage.push()
+                    }
+                }
+            }
+        }
+
+        stage('Update Deployment File') {   
+            environment {
+                GIT_REPO_NAME = ""
+            }
+            steps {
+                dir("manifests") {
+                    sh 'echo Cloning CICD Repo for updating manifests'
+                    git(
+                        url: "https://github.com/patil-ku/cicd-jenkins-argo",
+                        branch: "main",
+                        changelog: true,
+                        poll: true
+                    )
+                    withCredentials([gitUsernamePassword(credentialsId: 'git-token', gitToolName: 'Default')]) {
+                        sh '''
+                            BUILD_NUMBER=${BUILD_NUMBER}
+                            sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" manifests/deployment.yml
+                            git add manifests/deployment.yml
+                            git commit -m "Update deployment image to version ${BUILD_NUMBER}"
+                            git push -u origin main
+                        '''
+                    }
+                }
+            }
+        }
+
+}
+}
