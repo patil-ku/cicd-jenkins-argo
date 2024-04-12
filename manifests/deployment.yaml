@@ -19,3 +19,4 @@ spec:
         image: busybox
         ports:
         - containerPort: 8080
+        commands: ["/bin/sh", "echo Hello-World; sleep 1000"]
