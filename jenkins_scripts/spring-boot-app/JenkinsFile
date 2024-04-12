@@ -1,8 +1,6 @@
+def DOCKER_HOST='tcp://docker:2376'
 pipeline{
     agent {
-        environment {
-            DOCKER_HOST='tcp://docker:2376'
-        }
         docker {
             image 'abhishekf5/maven-abhishek-docker-agent:v1'
             args '--user root -v $DOCKER_HOST:/var/run/docker.sock' 
