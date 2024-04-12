@@ -1,4 +1,4 @@
-def DOCKER_HOST='tcp://docker:2376'
+def DOCKER_HOST='unix:///var/run/docker.sock'
 pipeline{
     agent {
         docker {
